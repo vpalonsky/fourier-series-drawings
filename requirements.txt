@@ -1,0 +1,2 @@
+pygame==2.6.1
+svg.path==6.3
