@@ -1,37 +1,53 @@
-import cmath
-import sympy as sy
+import scipy.integrate
 from functions import read_svg_points
+import pygame
+import cmath
+import scipy.integrate as integrate
 
-t = sy.Symbol("t")
-ft = t*t
+SVG_PATH = "bolt.svg"
+POINTS_PER_SEGMENT = 10
+EXPAND_FACTOR = 3
 
-svg_points = read_svg_points("letter-a.svg")
-ft = lambda t : svg_points[t]
-# print(ft)
+pygame.init()
+surface = pygame.display.set_mode((800, 800))
+clock = pygame.time.Clock()
 
+def average(points):
+	sum = 0
+	for point in points:
+		sum += point
+		# sum += point
+	return sum/len(points)*cmath.exp(complex(0, -2*cmath.pi*5))
 
-# cn = lambda n : sy.integrate(ft(t)*(cmath.exp(complex(0, -2*cmath.pi*n))**t), (t, 0, 1))
+def main():
+	global EXPAND_FACTOR
+	svg_points = read_svg_points(SVG_PATH, POINTS_PER_SEGMENT)
 
-CANT_VECTORS = 10
-STEPS = len(svg_points)
-dt = 1/STEPS
+	running = True
+	avg = average(svg_points)
+	# print(avg)
 
-def cn(n):
-	res = 0
+	while running:
+		for event in pygame.event.get():
+			if event.type == pygame.QUIT:
+				running = False
+			if event.type == pygame.KEYDOWN:
+				if event.key == pygame.K_ESCAPE:
+					running = False
+				if event.key == pygame.K_SPACE:
+					EXPAND_FACTOR += 1
+				if event.key == pygame.K_BACKSPACE:
+					EXPAND_FACTOR -= 1
 
-	for i in range(STEPS):
-		t = dt*i
-		res += ft(i)*cmath.exp(complex(0, -2*cmath.pi*n*t))*dt
+		surface.fill("black")
 
-	return res
+		for point in svg_points:
+			pygame.draw.circle(surface, "red", ((point.real*EXPAND_FACTOR)+400, (point.imag*EXPAND_FACTOR)+400), 2)
+		pygame.draw.circle(surface, "blue", ((avg.real*EXPAND_FACTOR)+400, (avg.imag*EXPAND_FACTOR)+400), 2)
 
-def calc_vectors_cn(cant = CANT_VECTORS):
-	vectors_cn = []
+		pygame.display.flip()
+		clock.tick(30)
 
-	for j in range(int(-cant/2), int(cant/2)):
-		vectors_cn.append(cn(j))
+	pygame.quit()
 
-	return vectors_cn
-
-# *cmath.exp(complex(0, -2*cmath.pi*n*t))
-print(calc_vectors_cn())
+main()

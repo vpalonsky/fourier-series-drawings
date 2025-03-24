@@ -2,12 +2,14 @@ import pygame
 from functions import read_svg_points, calc_vectors_cn
 import cmath
 
-SVG_PATH = "bolt.svg"
 W_WIDTH = 800
 W_HEIGHT = 800
-FRAMERATE = 2
-CANT_VECTORS = 71
-POINTS_PER_SEGMENT = 1
+FRAMERATE = 30
+SVG_PATH = "google.svg"
+# POINTS_PER_SEGMENT = 10
+CANT_VECTORS = 81 # cantidad a utilizar para cada segmento cerrado del path (obligatoriamente impar)
+STEPS = 300 # cantidad a utilizar para cada segmento cerrado del path
+EXPAND_FACTOR = 6
 
 pygame.init()
 surface = pygame.display.set_mode((W_WIDTH, W_HEIGHT))
@@ -30,37 +32,46 @@ class Vector():
 def update_vectors(vectors: list[Vector], t):
 	new_vectors = vectors
 	for i in range(CANT_VECTORS):
-		# if i>0:
-		# 	vector = vectors[i]
-		# 	vector.end = vector.cn*cmath.exp(complex(0, i*2*cmath.pi*t))
+		n = i-mid_i
+		new_vectors[i].end = new_vectors[i].cn*cmath.exp(complex(0, n*2*cmath.pi*t))*EXPAND_FACTOR
 
-		# 	if i>1:
-		# 		vector.start = vectors[i-1].end
-		if i!=mid_i:
-			n = i-(CANT_VECTORS/2)
-			new_vectors[i].end = new_vectors[i].cn*cmath.exp(complex(0, n*2*cmath.pi*t))
+	for i in range(1, mid_i+1):
+		i_fst = mid_i+i
+		i_snd = mid_i-i
 
-			# if i!=(mid_i+1):
-			new_vectors[i].start = new_vectors[i-1].start + new_vectors[i-1].end
+		new_vectors[i_fst].start = new_vectors[i_fst - (2*i-1)].start + new_vectors[i_fst - (2*i-1)].end
+		new_vectors[i_snd].start = new_vectors[i_snd + (2*i)].start + new_vectors[i_snd + (2*i)].end
 
 	return new_vectors
 
 def main():
-	svg_points = read_svg_points(SVG_PATH, POINTS_PER_SEGMENT)
-	ft = lambda t : svg_points[t]
-	steps = len(svg_points)
-	print(steps)
+	# path = read_svg_points(SVG_PATH, 0)
+	paths = read_svg_points(SVG_PATH)
 
-	vectors_cn = calc_vectors_cn(CANT_VECTORS, steps, ft)
-	vectors = [Vector(vectors_cn[i], complex(0, 0)) for i in range(CANT_VECTORS)]
-	vectors[mid_i].end = vectors[mid_i].cn
-	vectors[mid_i+1].start = vectors[mid_i].cn
+	initial_vectors_cn = []
+
+	for path in paths:
+		ft = lambda t : path.point(t)
+		vectors_cn = calc_vectors_cn(CANT_VECTORS, STEPS, ft)
+		initial_vectors_cn.append(vectors_cn)
+
+	vectors_container: list[list[Vector]] = []
+	for j in range(len(paths)):
+		path_vectors = []
+		for i in range(CANT_VECTORS):
+			path_vectors.append(Vector(initial_vectors_cn[j][i], complex(0, 0)))
+		vectors_container.append(path_vectors)
+
+	for vectors in vectors_container:
+		vectors[mid_i].end = vectors[mid_i].cn
+		vectors[mid_i+1].start = vectors[mid_i].cn
 
 	running = True
 	simulation = False
 	step = 0
 
-	draw_points = []
+	draw_points_container = []
+	for _ in paths: draw_points_container.append([])
 
 	while running:
 		for event in pygame.event.get():
@@ -75,18 +86,22 @@ def main():
 		surface.fill("black")
 
 		if True:
-			vectors = update_vectors(vectors, (step/steps)%1)
+			for i in range(len(paths)):
+				vectors_container[i] = update_vectors(vectors_container[i], (step/STEPS)%1)
 
-			for point in draw_points:
-				pygame.draw.circle(surface, "red", (point[0], point[1]), 1)
+			for draw_points in draw_points_container:
+				for i in range(1, len(draw_points)):
+					pygame.draw.line(surface, "red", (draw_points[i-1][0], draw_points[i-1][1]), (draw_points[i][0], draw_points[i][1]), 1)
+				# for point in draw_points:
+				# 	pygame.draw.circle(surface, "red", (point[0], point[1]), 1)
 
-		next_point = [W_WIDTH/2, W_HEIGHT/2]
-		for v in vectors:
-			next_point[0] += v.end.real
-			next_point[1] += v.end.imag
-			v.draw()
-		if next_point not in draw_points: draw_points.append(next_point)
-
+		for i in range(len(paths)):
+			next_point = [W_WIDTH/2, W_HEIGHT/2]
+			for v in vectors_container[i]:
+				next_point[0] += v.end.real
+				next_point[1] += v.end.imag
+				v.draw()
+			if next_point not in draw_points_container[i]: draw_points_container[i].append(next_point)
 
 		pygame.display.flip()
 		step+=1

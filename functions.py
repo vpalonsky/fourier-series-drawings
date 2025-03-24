@@ -1,52 +1,29 @@
-from svg.path import parse_path
-from svg.path.path import Line, Move,CubicBezier, Close
+from svg.path import parse_path, Path, PathSegment
+from svg.path.path import Line, CubicBezier, Close
 from xml.dom import minidom
 import cmath
 # import sympy as sy
 
-def read_svg_points(path_to_svg, points_per_segment):
+def read_svg_points(path_to_svg):
 	# read the SVG file
 	doc = minidom.parse(path_to_svg)
 	path_strings = [path.getAttribute('d') for path
 									in doc.getElementsByTagName('path')]
 	doc.unlink()
 
-	points = []
+	new_paths = []
 	for path_string in path_strings:
 		path = parse_path(path_string)
+
+		new_path = Path()
 		for e in path:
-			if isinstance(e, Line):
-				# diffx = e.end.real-e.start.real
-				# diffy = e.end.imag-e.start.imag
+			if isinstance(e, Close):
+				new_path.insert(-1, e)
+				new_paths.append(new_path)
+				new_path = Path()
+			else: new_path.insert(-1, e)
 
-				# if diffx==0:
-				# 	for i in range(points_per_segment):
-				# 		x = e.start.real
-				# 		y = e.start.imag+(diffy/points_per_segment)*i
-
-				# 		points.append(complex(x, y))
-				# else:
-				# 	m = diffy/diffx
-				# 	b = e.start.imag-m*e.start.real
-
-				# 	for i in range(points_per_segment):
-				# 		x = e.start.real+(diffx/points_per_segment)*i
-				# 		y = m*x + b
-
-				# 		points.append(complex(x, y))
-
-				diffx = e.end.real-e.start.real
-				diffy = e.end.imag-e.start.imag
-
-				for i in range(points_per_segment+1):
-					x = e.start.real+(diffx/points_per_segment)*i
-					y = e.start.imag+(diffy/points_per_segment)*i
-					points.append(complex(x, y))
-
-				# points.append(e.start)
-				# points.append(e.end)
-
-	return points
+	return new_paths
 
 def cn(n, steps, ft):
 	res = 0
@@ -54,7 +31,7 @@ def cn(n, steps, ft):
 
 	for i in range(steps):
 		t = dt*i
-		res += ft(i)*cmath.exp(complex(0, -2*cmath.pi*n*t))*dt
+		res += ft(t)*cmath.exp(complex(0, -2*cmath.pi*n*t))*dt
 
 	return res
 
@@ -67,11 +44,11 @@ def calc_vectors_cn(cant, steps, ft):
 
 	return vectors_cn
 
-# def cubic_bezier(t, P0, P1, P2, P3):
-#     """Compute a point on a cubic Bézier curve for a given t (0 to 1)."""
-#     x = (1-t)**3 * P0[0] + 3 * (1-t)**2 * t * P1[0] + 3 * (1-t) * t**2 * P2[0] + t**3 * P3[0]
-#     y = (1-t)**3 * P0[1] + 3 * (1-t)**2 * t * P1[1] + 3 * (1-t) * t**2 * P2[1] + t**3 * P3[1]
-#     return x, y
+def cubic_bezier(t, P0, P1, P2, P3):
+	"""Compute a point on a cubic Bézier curve for a given t (0 to 1)."""
+	x = (1-t)**3 * P0[0] + 3 * (1-t)**2 * t * P1[0] + 3 * (1-t) * t**2 * P2[0] + t**3 * P3[0]
+	y = (1-t)**3 * P0[1] + 3 * (1-t)**2 * t * P1[1] + 3 * (1-t) * t**2 * P2[1] + t**3 * P3[1]
+	return x, y
 
 # def draw_bezier_curve(P0, P1, P2, P3, steps=50):
 # 	"""Draw a cubic Bézier curve using Turtle."""
@@ -79,6 +56,21 @@ def calc_vectors_cn(cant, steps, ft):
 # 	pendown()
 
 # 	for i in range(steps + 1):
-# 			t = i / steps
-# 			x, y = cubic_bezier(t, P0, P1, P2, P3)
-# 			goto(x, y)
+# 		t = i / steps
+# 		x, y = cubic_bezier(t, P0, P1, P2, P3)
+# 		goto(x, y)
+
+def divide_cubic_bezier(controllers: CubicBezier, points_per_curve):
+	P0 = (controllers.start.real, controllers.start.imag)
+	P1 = (controllers.control1.real, controllers.control1.imag)
+	P2 = (controllers.control2.real, controllers.control2.imag)
+	P3 = (controllers.end.real, controllers.end.imag)
+
+	points = []
+
+	for i in range(points_per_curve+1):
+		t = i/points_per_curve
+		x, y = cubic_bezier(t, P0, P1, P2, P3)
+		points.append(complex(x, y))
+
+	return points
