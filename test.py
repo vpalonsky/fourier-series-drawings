@@ -1,8 +1,6 @@
-import scipy.integrate
 from functions import read_svg_points
 import pygame
 import cmath
-import scipy.integrate as integrate
 
 SVG_PATH = "bolt.svg"
 POINTS_PER_SEGMENT = 10

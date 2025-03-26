@@ -1,5 +1,5 @@
-from svg.path import parse_path, Path, PathSegment
-from svg.path.path import Line, CubicBezier, Close
+from svg.path import parse_path, Path
+from svg.path.path import Close
 from xml.dom import minidom
 import cmath
 # import sympy as sy
@@ -17,11 +17,10 @@ def read_svg_points(path_to_svg):
 
 		new_path = Path()
 		for e in path:
+			new_path.insert(-1, e)
 			if isinstance(e, Close):
-				new_path.insert(-1, e)
 				new_paths.append(new_path)
 				new_path = Path()
-			else: new_path.insert(-1, e)
 
 	return new_paths
 
@@ -60,17 +59,17 @@ def cubic_bezier(t, P0, P1, P2, P3):
 # 		x, y = cubic_bezier(t, P0, P1, P2, P3)
 # 		goto(x, y)
 
-def divide_cubic_bezier(controllers: CubicBezier, points_per_curve):
-	P0 = (controllers.start.real, controllers.start.imag)
-	P1 = (controllers.control1.real, controllers.control1.imag)
-	P2 = (controllers.control2.real, controllers.control2.imag)
-	P3 = (controllers.end.real, controllers.end.imag)
+# def divide_cubic_bezier(controllers: CubicBezier, points_per_curve):
+# 	P0 = (controllers.start.real, controllers.start.imag)
+# 	P1 = (controllers.control1.real, controllers.control1.imag)
+# 	P2 = (controllers.control2.real, controllers.control2.imag)
+# 	P3 = (controllers.end.real, controllers.end.imag)
 
-	points = []
+# 	points = []
 
-	for i in range(points_per_curve+1):
-		t = i/points_per_curve
-		x, y = cubic_bezier(t, P0, P1, P2, P3)
-		points.append(complex(x, y))
+# 	for i in range(points_per_curve+1):
+# 		t = i/points_per_curve
+# 		x, y = cubic_bezier(t, P0, P1, P2, P3)
+# 		points.append(complex(x, y))
 
-	return points
+# 	return points

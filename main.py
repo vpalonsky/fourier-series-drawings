@@ -3,11 +3,12 @@ from functions import read_svg_points, calc_vectors_cn
 import cmath
 
 W_WIDTH = 800
-W_HEIGHT = 800
+W_HEIGHT = 600
 FRAMERATE = 30
-SVG_PATH = "google.svg"
+SVG_PATH = "letter-a.svg"
 # POINTS_PER_SEGMENT = 10
 CANT_VECTORS = 81 # cantidad a utilizar para cada segmento cerrado del path (obligatoriamente impar)
+
 STEPS = 300 # cantidad a utilizar para cada segmento cerrado del path
 EXPAND_FACTOR = 6
 
@@ -32,8 +33,9 @@ class Vector():
 def update_vectors(vectors: list[Vector], t):
 	new_vectors = vectors
 	for i in range(CANT_VECTORS):
-		n = i-mid_i
-		new_vectors[i].end = new_vectors[i].cn*cmath.exp(complex(0, n*2*cmath.pi*t))*EXPAND_FACTOR
+		if i!=mid_i:
+			n = i-mid_i
+			new_vectors[i].end = new_vectors[i].cn*cmath.exp(complex(0, n*2*cmath.pi*t))*EXPAND_FACTOR
 
 	for i in range(1, mid_i+1):
 		i_fst = mid_i+i
@@ -45,7 +47,7 @@ def update_vectors(vectors: list[Vector], t):
 	return new_vectors
 
 def main():
-	# path = read_svg_points(SVG_PATH, 0)
+	global EXPAND_FACTOR
 	paths = read_svg_points(SVG_PATH)
 
 	initial_vectors_cn = []
@@ -63,7 +65,7 @@ def main():
 		vectors_container.append(path_vectors)
 
 	for vectors in vectors_container:
-		vectors[mid_i].end = vectors[mid_i].cn
+		vectors[mid_i].end = complex(0, 0)
 		vectors[mid_i+1].start = vectors[mid_i].cn
 
 	running = True
@@ -82,6 +84,10 @@ def main():
 					running = False
 				if event.key == pygame.K_s:
 					simulation = not simulation
+				if event.key == pygame.K_SPACE:
+					EXPAND_FACTOR += 1
+				if event.key == pygame.K_BACKSPACE:
+					EXPAND_FACTOR -= 1
 
 		surface.fill("black")
 
@@ -102,6 +108,7 @@ def main():
 				next_point[1] += v.end.imag
 				v.draw()
 			if next_point not in draw_points_container[i]: draw_points_container[i].append(next_point)
+			if len(draw_points_container[i])>STEPS: draw_points_container[i].pop(0)
 
 		pygame.display.flip()
 		step+=1
