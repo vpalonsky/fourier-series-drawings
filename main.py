@@ -1,5 +1,5 @@
 import pygame
-from functions import read_svg_points, calc_vectors_cn
+from functions import read_svg_paths, calc_vectors_cn
 import cmath
 import os
 
@@ -9,26 +9,28 @@ FRAMERATE = 30
 CANT_VECTORS = 81 # cantidad a utilizar para cada segmento cerrado del path (obligatoriamente impar)
 STEPS = 100 # cantidad a utilizar para cada segmento cerrado del path
 EXPAND_FACTOR = 6
-SVGS_PATH = "svg_imgs"
 DRAWING_COLOR = "blue"
 BACKGROUND_COLOR = "black"
 TEXT_TOP_MARGIN = 10
 TEXT_LEFT_MARGIN = 10
-TEXT_SEPARATION = 5
+TEXT_SEPARATION = 10
 FONT_SIZE = 24
-CONTROLS = [
-	"Next/previous svg: Up/down arrow",
-	"+20/-20 segment points: Right/left arrow",
-	"+20/-20 vectors: Enter/tab",
-	"Extend/contract svg: Space/backspace"
-]
+SVGS_PATH = "svg_imgs"
+SVGS = os.listdir(SVGS_PATH) if len(os.listdir(SVGS_PATH))>0 else ['']
+SVG_INDEX = 0
+DRAW_JUMP = 20
 
 pygame.init()
 surface = pygame.display.set_mode((W_WIDTH, W_HEIGHT))
 clock = pygame.time.Clock()
 my_font = pygame.font.Font(None, FONT_SIZE)
 mid_i = int(CANT_VECTORS/2)
-svgs = os.listdir(SVGS_PATH)
+sign_texts = [
+	"Actual svg: " + SVGS[SVG_INDEX],
+	"Arrows: " + str(CANT_VECTORS),
+	"Points per shape: " + str(STEPS),
+	"Draw jump: " + str(DRAW_JUMP)
+]
 
 class Vector():
 	def __init__(self, cn: complex, initial_pos: complex):
@@ -59,12 +61,14 @@ def update_vectors(vectors: list[Vector], t):
 
 	return new_vectors
 
-def abc(svg_index):
-	actual_svg_path = os.path.join(SVGS_PATH, svgs[svg_index%len(svgs)])
-	paths = read_svg_points(actual_svg_path)
+def generate_containers(svg_index):
+	generate_new_text()
+
+	actual_svg_path = os.path.join(SVGS_PATH, SVGS[svg_index%len(SVGS)])
+	paths = read_svg_paths(actual_svg_path)
 
 	initial_vectors_cn = []
-	draw_points_container = []
+	draw_points_container = [[] for _ in paths]
 	vectors_container: list[list[Vector]] = []
 
 	for path in paths:
@@ -82,18 +86,26 @@ def abc(svg_index):
 		vectors[mid_i].end = complex(0, 0)
 		vectors[mid_i+1].start = vectors[mid_i].cn
 
-	for _ in paths: draw_points_container.append([])
-
 	return (vectors_container, draw_points_container)
+
+def generate_new_text():
+	global sign_texts
+
+	sign_texts = [
+		"Actual svg: " + SVGS[SVG_INDEX],
+		"Arrows: " + str(CANT_VECTORS),
+		"Points per shape: " + str(STEPS),
+		"Draw jump: " + str(DRAW_JUMP)
+	]
 
 def main():
 	global surface
-	global EXPAND_FACTOR, STEPS, CANT_VECTORS, mid_i
+	global EXPAND_FACTOR, STEPS, CANT_VECTORS, SVG_INDEX, DRAW_JUMP, mid_i
 
-	svg_index = 0
-	vectors_container, draw_points_container = abc(svg_index)
+	vectors_container, draw_points_container = generate_containers(SVG_INDEX)
 	running = True
-	simulation = False
+	simulation = True
+	draw_vectors = True
 	step = 0
 
 	while running:
@@ -105,62 +117,68 @@ def main():
 					running = False
 				if event.key == pygame.K_s:
 					simulation = not simulation
+				if event.key == pygame.K_d:
+					draw_vectors = not draw_vectors
 				if event.key == pygame.K_SPACE:
 					EXPAND_FACTOR += 1
-				if event.key == pygame.K_BACKSPACE and EXPAND_FACTOR>1:
+				if event.key == pygame.K_BACKSPACE  and EXPAND_FACTOR>1:
 					EXPAND_FACTOR -= 1
 				if event.key == pygame.K_UP:
-					svg_index+=1
-					vectors_container, draw_points_container = abc(svg_index)
+					SVG_INDEX+=1
+					vectors_container, draw_points_container = generate_containers(SVG_INDEX)
 				if event.key == pygame.K_DOWN:
-					svg_index-=1
-					vectors_container, draw_points_container = abc(svg_index)
+					SVG_INDEX-=1
+					vectors_container, draw_points_container = generate_containers(SVG_INDEX)
 				if event.key == pygame.K_RIGHT:
 					STEPS += 20
-					vectors_container, draw_points_container = abc(svg_index)
+					vectors_container, draw_points_container = generate_containers(SVG_INDEX)
 				if event.key == pygame.K_LEFT and STEPS>20:
 					STEPS -= 20
-					vectors_container, draw_points_container = abc(svg_index)
+					vectors_container, draw_points_container = generate_containers(SVG_INDEX)
 				if event.key == pygame.K_RETURN:
 					CANT_VECTORS += 20
 					mid_i = int(CANT_VECTORS/2)
-					vectors_container, draw_points_container = abc(svg_index)
+					vectors_container, draw_points_container = generate_containers(SVG_INDEX)
 				if event.key == pygame.K_TAB and CANT_VECTORS>21:
 					CANT_VECTORS -= 20
 					mid_i = int(CANT_VECTORS/2)
-					vectors_container, draw_points_container = abc(svg_index)
+					vectors_container, draw_points_container = generate_containers(SVG_INDEX)
+				if event.key == pygame.K_n and DRAW_JUMP<STEPS:
+					DRAW_JUMP += 10
+					for i in range(len(draw_points_container)):
+						draw_points_container[i] = draw_points_container[i][10:]
+					generate_new_text()
+				if event.key == pygame.K_m and DRAW_JUMP>0:
+					DRAW_JUMP -= 10
+					generate_new_text()
+
 
 		surface.fill(BACKGROUND_COLOR)
 
-		if True:
+		if simulation:
 			for i in range(len(vectors_container)):
-				vectors_container[i] = update_vectors(vectors_container[i], (step/STEPS)%1)
+				vectors_container[i] = update_vectors(vectors_container[i], (step/STEPS))
 
 			for draw_points in draw_points_container:
 				for i in range(1, len(draw_points)):
 					pygame.draw.line(surface, DRAWING_COLOR, (draw_points[i-1][0], draw_points[i-1][1]), (draw_points[i][0], draw_points[i][1]), 1)
 
-		for i in range(len(vectors_container)):
-			next_point = [W_WIDTH/2, W_HEIGHT/2]
-			for v in vectors_container[i]:
-				next_point[0] += v.end.real
-				next_point[1] += v.end.imag
-				v.draw()
-			if next_point not in draw_points_container[i]: draw_points_container[i].append(next_point)
-			if len(draw_points_container[i])>STEPS: draw_points_container[i].pop(0)
+			for i in range(len(vectors_container)):
+				next_point = [W_WIDTH/2, W_HEIGHT/2]
+				for v in vectors_container[i]:
+					next_point[0] += v.end.real
+					next_point[1] += v.end.imag
+					if draw_vectors: v.draw()
+				draw_points_container[i].append(next_point)
+				if len(draw_points_container[i])>(STEPS-DRAW_JUMP): draw_points_container[i].pop(0)
 
-		segment_points_text_surface = my_font.render("Segment points: %d" % STEPS, False, "white")
-		vectors_text_surface = my_font.render("Vectors: %d" % CANT_VECTORS, False, "white")
-		surface.blit(segment_points_text_surface, (TEXT_LEFT_MARGIN, TEXT_TOP_MARGIN))
-		surface.blit(vectors_text_surface, (TEXT_LEFT_MARGIN, TEXT_TOP_MARGIN+segment_points_text_surface.get_height()+TEXT_SEPARATION))
+			for i in range(len(sign_texts)):
+				text = sign_texts[i]
+				text_surface = my_font.render(text, False, "white")
+				surface.blit(text_surface, (TEXT_LEFT_MARGIN, (i+1)*TEXT_TOP_MARGIN+TEXT_SEPARATION*i))
 
-		for i in range(len(CONTROLS)):
-			control = CONTROLS[i]
-			control_text_surface = my_font.render(control, False, "white")
-			surface.blit(control_text_surface, (TEXT_LEFT_MARGIN,(vectors_text_surface.get_height()+segment_points_text_surface.get_height()+TEXT_SEPARATION*(i+4)+segment_points_text_surface.get_height()*i)))
-
-		pygame.display.flip()
-		step+=1
+			pygame.display.flip()
+			step+=1
 		clock.tick(FRAMERATE)
 
 	pygame.quit()
