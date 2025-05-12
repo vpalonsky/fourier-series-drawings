@@ -1,5 +1,5 @@
 # Drawing SVGs with Fourier Series
-![Preview video](https://github.com/user-attachments/assets/1b359b78-c0ac-4d0b-b713-1de83f56ae59)
+https://github.com/user-attachments/assets/1b359b78-c0ac-4d0b-b713-1de83f56ae59
 
 ## What is this?
 The idea is that you can visualize a set of SVGs icons being drawn by the sum of N given arrows which, rotating in opposite directions and different frequencies, are set from tip to tail.
